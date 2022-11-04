@@ -135,6 +135,7 @@ class FlaxStableDiffusionPipeline(FlaxDiffusionPipeline):
     def _generate(
         self,
         prompt_ids: jnp.array,
+        negative_prompt_ids: jnp.array,
         params: Union[Dict, FrozenDict],
         prng_seed: jax.random.PRNGKey,
         num_inference_steps: int = 50,
@@ -155,10 +156,7 @@ class FlaxStableDiffusionPipeline(FlaxDiffusionPipeline):
         batch_size = prompt_ids.shape[0]
 
         max_length = prompt_ids.shape[-1]
-        uncond_input = self.tokenizer(
-            [""] * batch_size, padding="max_length", max_length=max_length, return_tensors="np"
-        )
-        uncond_embeddings = self.text_encoder(uncond_input.input_ids, params=params["text_encoder"])[0]
+        uncond_embeddings = self.text_encoder(negative_prompt_ids, params=params["text_encoder"])[0]
         context = jnp.concatenate([uncond_embeddings, text_embeddings])
 
         latents_shape = (batch_size, self.unet.in_channels, height // 8, width // 8)
@@ -219,6 +217,7 @@ class FlaxStableDiffusionPipeline(FlaxDiffusionPipeline):
     def __call__(
         self,
         prompt_ids: jnp.array,
+        negative_prompt_ids: jnp.array,
         params: Union[Dict, FrozenDict],
         prng_seed: jax.random.PRNGKey,
         num_inference_steps: int = 50,
@@ -276,11 +275,11 @@ class FlaxStableDiffusionPipeline(FlaxDiffusionPipeline):
         """
         if jit:
             images = _p_generate(
-                self, prompt_ids, params, prng_seed, num_inference_steps, height, width, guidance_scale, latents, debug
+                self, prompt_ids, negative_prompt_ids, params, prng_seed, num_inference_steps, height, width, guidance_scale, latents, debug
             )
         else:
             images = self._generate(
-                prompt_ids, params, prng_seed, num_inference_steps, height, width, guidance_scale, latents, debug
+                prompt_ids, negative_prompt_ids, params, prng_seed, num_inference_steps, height, width, guidance_scale, latents, debug
             )
 
         if self.safety_checker is not None:
@@ -311,10 +310,10 @@ class FlaxStableDiffusionPipeline(FlaxDiffusionPipeline):
 # TODO: maybe use a config dict instead of so many static argnums
 @partial(jax.pmap, static_broadcasted_argnums=(0, 4, 5, 6, 7, 9))
 def _p_generate(
-    pipe, prompt_ids, params, prng_seed, num_inference_steps, height, width, guidance_scale, latents, debug
+    pipe, prompt_ids, negative_prompt_ids, params, prng_seed, num_inference_steps, height, width, guidance_scale, latents, debug
 ):
     return pipe._generate(
-        prompt_ids, params, prng_seed, num_inference_steps, height, width, guidance_scale, latents, debug
+        prompt_ids, params, negative_prompt_ids, prng_seed, num_inference_steps, height, width, guidance_scale, latents, debug
     )
 
 
