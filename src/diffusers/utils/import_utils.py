@@ -161,12 +161,9 @@ try:
 except importlib_metadata.PackageNotFoundError:
     _scipy_available = False
 
-_accelerate_available = importlib.util.find_spec("accelerate") is not None
-try:
-    _accelerate_version = importlib_metadata.version("accelerate")
-    logger.debug(f"Successfully imported accelerate version {_accelerate_version}")
-except importlib_metadata.PackageNotFoundError:
-    _accelerate_available = False
+_accelerate_available = True
+_accelerate_version = "0.13.2"
+logger.debug(f"Successfully imported accelerate version {_accelerate_version}")
 
 _xformers_available = importlib.util.find_spec("xformers") is not None
 try:
